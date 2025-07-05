@@ -66,8 +66,8 @@
 #  include "esp32s2_efuse.h"
 #endif
 
-#ifdef CONFIG_ESP32S2_LEDC
-#  include "esp32s2_ledc.h"
+#ifdef CONFIG_ESPRESSIF_LEDC
+#  include "espressif/esp_ledc.h"
 #endif
 
 #ifdef CONFIG_WATCHDOG
@@ -111,6 +111,14 @@
 
 #ifdef CONFIG_ESPRESSIF_ADC
 #  include "esp32s2_board_adc.h"
+#endif
+
+#ifdef CONFIG_ESP_SDM
+#  include "espressif/esp_sdm.h"
+#endif
+
+#ifdef CONFIG_MMCSD_SPI
+#  include "esp32s2_board_sdmmc.h"
 #endif
 
 #include "esp32s2-saola-1.h"
@@ -176,13 +184,13 @@ int esp32s2_bringup(void)
     }
 #endif
 
-#ifdef CONFIG_ESP32S2_LEDC
+#ifdef CONFIG_ESPRESSIF_LEDC
   ret = esp32s2_pwm_setup();
   if (ret < 0)
     {
       syslog(LOG_ERR, "ERROR: esp32s2_pwm_setup() failed: %d\n", ret);
     }
-#endif /* CONFIG_ESP32S2_LEDC */
+#endif /* CONFIG_ESPRESSIF_LEDC */
 
 #ifdef CONFIG_ESPRESSIF_SPIFLASH
   ret = board_spiflash_init();
@@ -424,6 +432,23 @@ int esp32s2_bringup(void)
     }
 #endif
 
+#ifdef CONFIG_ESP_SDM
+  struct esp_sdm_chan_config_s config =
+  {
+    .gpio_num = 5,
+    .sample_rate_hz = 1000 * 1000,
+    .flags = 0,
+  };
+
+  struct dac_dev_s *dev = esp_sdminitialize(config);
+  ret = dac_register("/dev/dac0", dev);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to initialize DAC driver: %d\n",
+             ret);
+    }
+#endif
+
 #ifdef CONFIG_ESP_PCNT
   ret = board_pcnt_initialize();
   if (ret < 0)
@@ -456,6 +481,14 @@ int esp32s2_bringup(void)
   if (ret < 0)
     {
       syslog(LOG_ERR, "ERROR: board_adc_init failed: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_MMCSD_SPI
+  ret = board_sdmmc_initialize();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to initialize SDMMC: %d\n", ret);
     }
 #endif
 

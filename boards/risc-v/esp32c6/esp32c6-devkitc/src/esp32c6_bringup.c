@@ -113,8 +113,20 @@
 #  include "esp_board_pcnt.h"
 #endif
 
+#ifdef CONFIG_SENSORS_MPU60X0
+#  include "esp_board_mpu60x0.h"
+#endif
+
 #ifdef CONFIG_SYSTEM_NXDIAG_ESPRESSIF_CHIP_WO_TOOL
 #  include "espressif/esp_nxdiag.h"
+#endif
+
+#ifdef CONFIG_ESP_SDM
+#  include "espressif/esp_sdm.h"
+#endif
+
+#ifdef CONFIG_NCV7410
+#  include "esp_board_ncv7410.h"
 #endif
 
 #include "esp32c6-devkitc.h"
@@ -311,6 +323,35 @@ int esp_bringup(void)
     }
 #endif
 
+#ifdef CONFIG_SENSORS_MPU60X0
+  /* Try to register MPU60x0 device in I2C0 */
+
+  ret = board_mpu60x0_initialize(0);
+
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to initialize MPU60x0 "
+             "Driver for I2C0: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_ESP_SDM
+  struct esp_sdm_chan_config_s config =
+  {
+    .gpio_num = 5,
+    .sample_rate_hz = 1000 * 1000,
+    .flags = 0,
+  };
+
+  struct dac_dev_s *dev = esp_sdminitialize(config);
+  ret = dac_register("/dev/dac0", dev);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to initialize DAC driver: %d\n",
+             ret);
+    }
+#endif
+
 #ifdef CONFIG_ESPRESSIF_TEMP
   struct esp_temp_sensor_config_t cfg = TEMPERATURE_SENSOR_CONFIG(10, 50);
   ret = esp_temperature_sensor_initialize(cfg);
@@ -433,6 +474,14 @@ int esp_bringup(void)
   if (ret < 0)
     {
       syslog(LOG_ERR, "ERROR: board_adc_init failed: %d\n", ret);
+    }
+#endif
+
+#ifdef CONFIG_NCV7410
+  ret = board_ncv7410_initialize();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "ERROR: esp_ncv7410_initialize failed: %d\n", ret);
     }
 #endif
 
